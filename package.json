@@ -1,0 +1,27 @@
+{
+  "name": "gsi-traverser",
+  "version": "1.0.0",
+  "description": "Traverses gsi data and deal with stuff",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Oted/gsi-traverser.git"
+  },
+  "author": "oted",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Oted/gsi-traverser/issues"
+  },
+  "homepage": "https://github.com/Oted/gsi-traverser",
+  "dependencies": {
+    "async": "^1.5.2",
+    "dotenv": "^2.0.0",
+    "mongoose": "^4.3.7",
+    "mongoose-times": "^0.1.0",
+    "request": "^2.69.0",
+    "trello": "^0.5.1"
+  }
+}
