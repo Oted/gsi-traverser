@@ -22,6 +22,7 @@
     "mongoose": "^4.3.7",
     "mongoose-times": "^0.1.0",
     "request": "^2.69.0",
-    "trello": "^0.5.1"
+    "trello": "^0.5.1",
+    "gsi-models" : "git@github.com:Oted/gsi-models.git"
   }
 }
