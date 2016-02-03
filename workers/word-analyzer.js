@@ -126,9 +126,11 @@ var addFragmentToItems = function(doc, word, done) {
     return Async.eachLimit(Object.keys(internals.word_origin_hash[word]), 3, function(id, next) {
         var item = internals.word_origin_hash[word][id];
 
-        L('Adding fragment ' + word + ' to ' + item.title);
+        if (item.fragments.indexOf(word) < 0) {
+            L('Adding fragment ' + word + ' to ' + item.title);
+            item.fragments.push(word);
+        }
 
-        item.fragments.push(word);
         return item.save(next);
     }, done);
 };
