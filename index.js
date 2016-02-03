@@ -1,5 +1,7 @@
 var Async       = require('async');
 
+var EXPIRE_TIME = 1000 * 60 * 60 * 240;
+
 var Models      = require('gsi-models'),
     models      = new Models();
 
@@ -12,243 +14,105 @@ var internals   = {};
  */
 console.log('Connecting to databse...');
 
+process.env.NODE_ENV= 'test';
+
 //connect to the database and go
 models.connect(function() {
     console.log('Getting all enabled items...');
     
-    return internals.addQuery({
-        'type' : 'trending',
-        'title' : 'Documentaries',
-        'query' : {
-            'enabled' : true,
-            'title' : 'documentaries',
-            'types' : ['youtube']
+    models.model['item'].find({enabled : true}, {}, {sort : '_sort'}, function(err, docs) {
+        if (err) {
+            throw err;
         }
-    }, function() {
-        console.log('done', arguments);
-    })
-    
-
-    models.model['item'].find({enabled : true}, function(err, docs) {
-    
-    
+        
+        return internals.process(docs, internals.processed);
     });
 });
 
-internals.go = function(done) {
-    //remove all trending
-    //iterate all items
-        //remove invalid stuff
-        //
-    //Async.series()
+/**
+ *  The flow
+ *
+ *  Each of the workers get a chunk of the fetched data
+ *  Then each of the workers does what it needs to do with them
+ */
+internals.process = function(items, done) {
+    console.log('Processing ' + items.length + ' items...');
 
+    return Async.parallel({
+        'twitch' : function(next) {
+            var targets = items.filter(function(item) { 
+                return item.type === 'twitch'
+            });
 
-};
+            return require('./workers/twitch.js')(EXPIRE_TIME, targets, next);
+        },
+        '404' : function(next) {
+            var targets = items.filter(function(item) { 
+                return item._sort > new Date() - 3600 * 6 * 1000 && (
+                       item.type === "img" || 
+                       item.type === "gif" ||
+                       item.type === "video" ||
+                       item.type === "vine" ||
+                       item.type === "soundcloud"
+                   )
+            });
 
-internals.addQuery = function(query, done) {
-    var Query = models.model['query'];
-    console.log(models);
-    var q = new models.model['query'](query);
+            return require('./workers/404.js')(EXPIRE_TIME, targets, next);
+        },
+        'youtube' : function(next) {
+            var targets = items.filter(function(item) { 
+                return item._sort > new Date() - 3600 * 6 * 1000 &&
+                       item.type === "youtube";
+            });
 
-    q.save(done);
+            return require('./workers/youtube.js')(EXPIRE_TIME, targets, next);
+        },
+        'expire' : function(next) {
+            var targets = items.filter(function(item) {
+                return item._sort < new Date() - EXPIRE_TIME; 
+            });
+
+            return require('./workers/remover.js')(EXPIRE_TIME, targets, next);
+        },
+        'word-analyzer' : function(next) {
+            var targets = items.filter(function(item) {
+                return item.title.length > 5 && item._sort > new Date() - 3600 * 48 * 1000; 
+            });
+
+            return require('./workers/word-analyzer.js')(models.model['title-fragment'], targets, next);
+        }
+    }, done);
 };
 
 /**
- *  Setup connection to databse
+ *  Done with the flow.
  */
-// Mongoose.connect(process.env.MONGO_URL, function(err, res) {
-    // if (err) {
-        // return;
-    // }
+internals.processed = function(err, result) {
+    if (err) {
+        throw err;
+    }
 
-    // internals.model = Mongoose.model('Item', itemSchema);
-    
-    // //item model
-    // ItemModel = Mongoose.models.Item ? Mongoose.model('Item') : Mongoose.model('Item', itemSchema);
-    // return callback(null, ItemModel);
-// });
+    console.log(result);
+    console.log('PROCESSED!');
+    process.exit();
+};
 
-
-
-
-
-
-
-// console.log('hi');
-// require('dotenv').load();
-// var RUN_TIME = 60000 : 1000 * 60 * 60 * 4;
-
-// var fs              = require('fs'),
-    // Async           = require('async'),
-    // Hoek            = require('hoek'),
-    // Utils           = require('./lib/utils.js'),
-    // Mongoose        = require('mongoose'),
-    // TimeStamp       = require('mongoose-times'),
-    // Injector        = require('./lib/injector.js'),
-    // Ejector         = require('./lib/ejector.js'),
-    // Scraper         = require('./lib/scraper.js'),
-    // requestSpan     = process.argv.length === 3 ? ,
-    // internals       = {};
-
-// internals.init = function(mappings) {
-    // console.log('Initializing...');
-
-    // internals.setUpDb(function(err, ItemModel) {
-        // if (err) {
-            // throw err;
+/**
+ *  Save a new trending query
+ */
+internals.addQuery = function(query, done) {
+    // return internals.addQuery({
+        // 'type' : 'trending',
+        // 'title' : 'Documentaries',
+        // 'query' : {
+            // 'enabled' : true,
+            // 'title' : 'documentaries',
+            // 'types' : ['youtube']
         // }
-    
-        // var injector = new Injector(Math.floor(requestSpan / 2), ItemModel);
-        // var ejector = new Ejector(ItemModel);
+    // }, function() {
+        // console.log('done', arguments);
+    // })
 
-        // internals.initEject(ejector, ItemModel);
-        // internals.initInject(injector, mappings, ItemModel);
-    // });
-// }
-
-
-// /**
- // * Init function for the ejector.
-// */
-// internals.initEject = function(ejector, ItemModel) {
-    // console.log('starting a new ejection session');
-    // console.time('eject');
-        
-    // ejector.getToWork(Math.floor(requestSpan / 4), function(err, totals) {
-        // if (err) {
-            // throw err;
-        // }
-
-        // console.timeEnd('eject');
-        // console.log(new Date());
-        // console.log(JSON.stringify(totals, null, " "));
-        // return internals.initEject(ejector, ItemModel);
-    // }); 
-// };
-
-
-// /**
- // *  Init function for adding items 
- // */
-// internals.initInject = function(injector, mappings, ItemModel) {
-    // console.log('starting a new injection session');
-    // console.time('inject');
-
-    // //iterate over all mappings and scraper them 
-    // Async.map(mappings, internals.scrapeMapping, function(err, results) {
-        // results = Hoek.flatten(results || []);
-        
-        // //do some filtering and fixes
-        // results = results.filter(function(item) {
-            // if (!item || !item.data) { 
-                // return false 
-            // };
-            
-            // return true;
-        // }).map(function(item) {
-            // if (!item.source) {
-                // item.source = Utils.extractSourceFromData(item);
-            // }
-
-            // return item;
-        // });
-
-        // //console.log(JSON.stringify(results, null, ' '));
-
-        // injector.injectMultiple(results, function(err, totals) {
-            // if (err) {
-                // throw err;
-            // }
-
-            // console.log('this run took : ');
-            // console.timeEnd('inject');
-            // console.log(new Date());
-            // console.log(JSON.stringify(totals, null, " "));
-            // return internals.initInject(injector, mappings, ItemModel);
-        // });
-    // });
-// };
-
-// /**
- // *  Completely scrapes a mapping file and callbacks when done
- // */
-// internals.scrapeMapping = function(file, done) {
-    // try {
-        // var mapping = require('./mappings/' + file);
-        // scraper.scrape(file, mapping, done); 
-    // } catch (err) {
-        // return done(err); 
-    // }
-// };
-
-// //if mapping file is provided, just debug it
-// if (process.argv.length === 3) {
-    // var mappingFile = process.argv[2];
-
-    // internals.scrapeMapping(mappingFile, function(err, results) {
-        // results = Hoek.flatten(results);
-        // console.log(JSON.stringify(results, null, " "));
-    // });
-// } else {
-    // fs.readdir('./mappings/', function(err, files) {
-        // if (err) {
-            // throw err;
-        // } 
-
-        // var isJson = /\.json$/;
-        // var mappings = files.filter(function(file) {
-            // return isJson.test(file);
-        // });
-       
-        // //and one at runstart
-        // internals.init(mappings);
-    // });
-// }
-
-// /**
- // * Set up dd
- // */
-// internals.setUpDb = function(callback) {
-    // //enum schema types
-    // var itemTypes       = ['youtube', 'img', 'gif', 'gifv', 'soundcloud', 'vimeo', 'vine', 'text', 'video', 'instagram', 'twitch', 'ted', 'sound', 'other'];
-    
-    // Mongoose.connect(process.env.MONGO_URL, function(err, res) {
-        // if (err) {
-            // return done(err);
-        // }
-
-        // //item schema
-        // var itemSchema = new Mongoose.Schema({
-            // _hash   : { type : String, unique : true },
-            // _sort   : { type : String },
-            // title   : { type : String },
-            // type    : { type: String, enum: itemTypes },
-            // data    : { type : Mongoose.Schema.Types.Mixed, required : 'Data is required.' },
-            // source  : { type : String },
-            // score   : { type : Number, default : 0 },
-            // ip      : { type : String },
-            // scraped : { type : Boolean, default : false },
-            // enabled : { type : Boolean, default : true }
-        // }).plugin(TimeStamp);
-        
-        // //item model
-        // ItemModel = Mongoose.models.Item ? Mongoose.model('Item') : Mongoose.model('Item', itemSchema);
-        // return callback(null, ItemModel);
-    // });
-// }
-
-// /**
- // *  Close connection
- // */
-// internals.close = function() {
-    // console.log('Closing db!');
-    // ItemModel = RatingModel = AddjectiveModel = null;
-    // Mongoose.connection.close();
-// };
-
-
-// //on uncaught
-// process.on('uncaughtException', function(err) {
-    // throw err;
-    // console.log('Caught exception: ' + err);
-// });
+    var q = new models.model['query'](query);
+    q.save(done);
+};
