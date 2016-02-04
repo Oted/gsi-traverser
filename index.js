@@ -76,7 +76,7 @@ internals.process = function(items, done) {
         },
         'word-analyzer' : function(next) {
             var targets = items.filter(function(item) {
-                return item.title.length > 5 && item._sort > new Date() - 3600 * 48 * 1000; 
+                return item.title.length > 5 && item._sort > new Date() - 3600 * 60 * 1000; 
             });
 
             return require('./workers/word-analyzer.js')(models.model['title-fragment'], targets, next);

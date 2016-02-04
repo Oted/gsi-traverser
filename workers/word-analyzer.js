@@ -3,9 +3,11 @@ var Request     = require('request');
 var L           = require('../lib/logger.js');
 var _           = require('lodash');
 var forbidden   = require('../data/forbidden_words.json');
+var Natural     = require('natural');
+var tokenizer   = new Natural.WordTokenizer();
 
 var internals = {
-    'score_threshold' : 75,
+    'score_threshold' : 65,
     'accepted_threshold' : 6,
     'word_origin_hash' : {},
     'all_words_occurrences' : {},
@@ -27,13 +29,13 @@ module.exports = function(model, items, done) {
 
     items.forEach(function(item) {
         var title = item.toObject().title.trim().toLowerCase();
-
-        var words = title.split(' ').map(function(word) {
-            return word.replace(/\W+/g, " ")
-                       .replace("'s",'')
-                       .trim();
-        }).filter(function(word) {
+        
+        var words = tokenizer.tokenize(title).filter(function(word) {
             return word.length >= 3;
+        });
+
+        var bigrams = Natural.NGrams.bigrams(words.join(' ')).forEach(function(biword) {
+            words.push(biword.join(' '));
         });
 
         words.forEach(function(word) {
@@ -74,6 +76,10 @@ module.exports = function(model, items, done) {
     internals.median_occurrance = Math.floor(internals.median_occurrance / Object.keys(internals.accepted_words).length);
 
     return Async.eachLimit(Object.keys(internals.accepted_words), 3, function(word, next) {
+        if (forbidden[word]) {
+            return next();
+        }
+
         model.findOne({ string: word }, function (err, doc) {
             if (err) {
                 return next(err);
