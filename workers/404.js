@@ -42,7 +42,14 @@ module.exports = function(expireTime, items, done) {
                 L('Removing item ' + doc.toObject().data  +' bacause ' + res.statusCode);
                 doc.set('_sort', newSort.toString());
                 internals.count.removed++;
-                return doc.save(next);
+
+                return doc.save(function(err, res) {
+                    if (err) {
+                        L('ERROR IN 404', err.message);
+                    }
+
+                    return next(null, res);
+                });
             }
 
             return next();

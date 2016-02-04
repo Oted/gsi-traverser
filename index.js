@@ -76,7 +76,8 @@ internals.process = function(items, done) {
         },
         'word-analyzer' : function(next) {
             var targets = items.filter(function(item) {
-                return item.title.length > 5 && item._sort > new Date() - 3600 * 60 * 1000; 
+                return item._sort > new Date() - 3600 * 60 * 1000 &&
+                       item.type !== "twitch";
             });
 
             return require('./workers/word-analyzer.js')(models.model['title-fragment'], targets, next);

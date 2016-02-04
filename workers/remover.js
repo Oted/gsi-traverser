@@ -24,7 +24,14 @@ module.exports = function(expireTime, items, done) {
         if (doc._sort < new Date() - expireTime) {
             internals.count.removed++;
             doc.enabled = false;
-            return doc.save(next);
+
+            return doc.save(function(err, res) {
+                if (err) {
+                    L('ERROR IN REMOVER', err.message);
+                }
+
+                return next(null, res);
+            });
         }
 
         return next();

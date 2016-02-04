@@ -86,7 +86,7 @@ module.exports = function(model, items, done) {
             }
 
             if (!doc) {
-                L('Creating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
+                // L('Creating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
                 var newFragment = new model({
                     'string' : word,
                     'count' : 1,
@@ -100,7 +100,7 @@ module.exports = function(model, items, done) {
                 });
             }
              
-            L('Updating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
+            //L('Updating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
 
             doc.count++;
             doc.total+= internals.accepted_words[word];
@@ -116,7 +116,7 @@ module.exports = function(model, items, done) {
         }
 
         return done(null, internals);
-    })    
+    });
     
     return done(null, internals['best_words']);
 };
@@ -133,10 +133,16 @@ var addFragmentToItems = function(doc, word, done) {
         var item = internals.word_origin_hash[word][id];
 
         if (item.fragments.indexOf(word) < 0) {
-            L('Adding fragment ' + word + ' to ' + item.title);
+            //L('Adding fragment ' + word + ' to ' + item.title);
             item.fragments.push(word);
         }
 
-        return item.save(next);
+        return item.save(function(err, res) {
+            if (err) {
+                L('ERROR WHEN ADDING FRAGMENT TO ITEM', err);
+            }
+
+            return next(null, res);
+        });
     }, done);
 };

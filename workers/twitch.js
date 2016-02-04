@@ -42,7 +42,14 @@ module.exports = function(expireTime, items, done) {
             if (httpResponse.statusCode !== 200 || !JSON.parse(body).stream) {
                 internals.count.removed++;
                 L('Removing twich item ' + streamName);
-                return doc.remove(next);
+
+                return doc.remove(function(err, res) {
+                    if (err) {
+                        L('ERROR WHEN REMOVING TWITCH', err.message);
+                    }
+
+                    return next(null, res);
+                });
             }
 
             return next();

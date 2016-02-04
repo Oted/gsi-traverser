@@ -33,7 +33,7 @@ module.exports = function(expireTime, items, done) {
         return Request(option, function(err, res, body) {
             if (err) {
                 internals.count.errors++;
-                L('Error in youtube',err.message);
+                L('Error in youtube', err.message);
                 return next();
             }
 
@@ -42,9 +42,16 @@ module.exports = function(expireTime, items, done) {
             if (!json || !json.items || json.items.length < 1 || json.items[0].status.embeddable === false) {
                 var newSort = ((+Date.now()) - expireTime);
                 internals.count.removed++;
-                console.log(doc.data, ' is not embeddable', newSort);
+                L(doc.data, ' is not embeddable', newSort);
                 doc.set('_sort', newSort.toString());
-                return doc.save(next);
+                
+                return doc.save(function(err, res) {
+                    if (err) {
+                        L('ERROR WHEN UPDATING YOUTUBE', err.message);
+                    }
+
+                    return next(null, res);
+                });
             }
 
             return next();
