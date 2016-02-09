@@ -7,125 +7,126 @@ var Natural     = require('natural');
 var tokenizer   = new Natural.WordTokenizer();
 
 var internals = {
-    'score_threshold' : 65,
+    'score_threshold' : 50,
     'accepted_threshold' : 6,
     'word_origin_hash' : {},
     'all_words_occurrences' : {},
     'accepted_words' : {},
-    'best_words' : {},
     'max_occurrance' : 0,
-    'median_occurrance' : 0
+    'hash_map' : null,
+    'count' : {
+        'total' : 0,
+        'added' : 0,
+        'updated' : 0,
+        'pushed' : 0
+    }
 };
 
 /**
  * Worker for analyzing the words in the titles 
  */
-module.exports = function(model, items, done) {
-    if (!items || !items.length) {
-        return done(null, internals.count);
-    }
+module.exports = function(models, done) {
+    return models.model['item'].find({enabled : true, _sort : { $gte : new Date() - 3600 * 60 * 1000}}, function(err, items) {
+        if (!items || !items.length) {
+            return done(null, internals.count);
+        }
 
-    L('Analyzer is dealing with ' + items.length + ' items..');
+        L('Analyzer is dealing with ' + items.length + ' items..');
 
-    items.forEach(function(item) {
-        var title = item.toObject().title.trim().toLowerCase();
-        
-        var words = tokenizer.tokenize(title).filter(function(word) {
-            return word.length >= 3;
-        });
-
-        var bigrams = Natural.NGrams.bigrams(words.join(' ')).forEach(function(biword) {
-            words.push(biword.join(' '));
-        });
-
-        words.forEach(function(word) {
-            if (forbidden[word]) {
-                return;
-            }
+        items.forEach(function(item) {
+            var title = item.toObject().title.trim().toLowerCase();
             
-            if (!internals.word_origin_hash[word]) {
-                internals.word_origin_hash[word] = {};
-            }
+            var words = tokenizer.tokenize(title).filter(function(word) {
+                return word.length >= 3;
+            });
 
-            internals.word_origin_hash[word][item.id] = item;
+            var bigrams = Natural.NGrams.bigrams(words.join(' ')).forEach(function(biword) {
+                words.push(biword.join(' '));
+            });
 
-            if (internals.all_words_occurrences[word]) {
-                internals.all_words_occurrences[word]++;
-                
-                if (internals.all_words_occurrences[word] >= internals.accepted_threshold) {
-                    internals.accepted_words[word] = internals.all_words_occurrences[word];
-                    
-                    if (internals.all_words_occurrences[word] > internals.max_occurrance) {
-                        internals.max_occurrance = internals.all_words_occurrences[word];
-                    }
+            words.forEach(function(word) {
+                if (forbidden[word]) {
+                    return;
                 }
-            } else {
-                internals.all_words_occurrences[word] = 1;
-            }
-        });
-    });
-    
-    Object.keys(internals.accepted_words).forEach(function(word) {
-        internals.median_occurrance += internals.accepted_words[word];
+                
+                if (!internals.word_origin_hash[word]) {
+                    internals.word_origin_hash[word] = {};
+                }
 
-        if (internals.accepted_words[word] >= internals.max_occurrance - 10) {
-            internals.best_words[word] = internals.accepted_words[word];
-        }
-    });
-    
-    internals.median_occurrance = Math.floor(internals.median_occurrance / Object.keys(internals.accepted_words).length);
+                internals.word_origin_hash[word][item.id] = item;
 
-    return Async.eachLimit(Object.keys(internals.accepted_words), 3, function(word, next) {
-        if (forbidden[word]) {
-            return next();
-        }
-
-        model.findOne({ string: word }, function (err, doc) {
-            if (err) {
-                return next(err);
-            }
-
-            if (!doc) {
-                // L('Creating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
-                var newFragment = new model({
-                    'string' : word,
-                    'count' : 1,
-                    'total' : internals.accepted_words[word],
-                    'median' : internals.accepted_words[word],
-                    'score' : internals.accepted_words[word] * word.length
-                });
-
-                return newFragment.save(function(err, newDoc) {
-                    return addFragmentToItems(newDoc, word, next);
-                });
-            }
-             
-            //L('Updating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
-
-            doc.count++;
-            doc.total+= internals.accepted_words[word];
-            doc.score = internals.accepted_words[word] * word.length;
-            doc.median = doc.total / doc.count;
-            return doc.save(function(err, newDoc) {
-                return addFragmentToItems(newDoc, word, next);
+                if (internals.all_words_occurrences[word]) {
+                    internals.all_words_occurrences[word]++;
+                    
+                    if (internals.all_words_occurrences[word] >= internals.accepted_threshold) {
+                        internals.accepted_words[word] = internals.all_words_occurrences[word];
+                        
+                        if (internals.all_words_occurrences[word] > internals.max_occurrance) {
+                            internals.max_occurrance = internals.all_words_occurrences[word];
+                        }
+                    }
+                } else {
+                    internals.all_words_occurrences[word] = 1;
+                }
             });
         });
-    }, function(err) {
-        if (err) {
-            return done(err);
-        }
+        
+        return Async.eachLimit(Object.keys(internals.accepted_words), 3, function(word, next) {
+            if (forbidden[word]) {
+                return next();
+            }
 
-        return done(null, internals);
+            models.model['title-fragment'].findOne({ string: word }, function (err, doc) {
+                if (err) {
+                    return next(err);
+                }
+                
+                internals.count.total++;
+
+                if (!doc) {
+                    internals.count.added++;
+                    // L('Creating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
+                    var newFragment = new models.model['title-fragment']({
+                        'string' : word,
+                        'count' : 1,
+                        'total' : internals.accepted_words[word],
+                        'median' : internals.accepted_words[word],
+                        'score' : 0
+                    });
+
+                    return newFragment.save(function(err, newDoc) {
+                        return addFragmentToItems(newDoc, word, next);
+                    });
+                }
+                    
+                internals.count.updated++;
+                 
+                // L('Updating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
+
+                doc.count++;
+                doc.total += internals.accepted_words[word];
+                doc.median = doc.total / doc.count;
+                doc.score  = internals.accepted_words[word] - doc.median;
+
+                return doc.save(function(err, newDoc) {
+                    return addFragmentToItems(newDoc, word, next);
+                });
+            });
+        }, function(err) {
+            if (err) {
+                return done(err);
+            }
+
+            return done(null, internals.count);
+        });
     });
-    
-    return done(null, internals['best_words']);
 };
 
 /**
  *  Add the word to 
  */
 var addFragmentToItems = function(doc, word, done) {
-    if (doc.score < internals.score_threshold) {
+    if (internals.accepted_words[word] * word.length < internals.score_threshold) {
         return done();
     }
 
@@ -133,7 +134,8 @@ var addFragmentToItems = function(doc, word, done) {
         var item = internals.word_origin_hash[word][id];
 
         if (item.fragments.indexOf(word) < 0) {
-            //L('Adding fragment ' + word + ' to ' + item.title);
+            internals.count.pushed++;
+            // L('Adding fragment ' + word + ' to ' + item.title);
             item.fragments.push(word);
         }
 
