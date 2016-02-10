@@ -8,7 +8,7 @@ var tokenizer   = new Natural.WordTokenizer();
 
 var internals = {
     'score_threshold' : 50,
-    'accepted_threshold' : 6,
+    'accepted_threshold' : 10,
     'word_origin_hash' : {},
     'all_words_occurrences' : {},
     'accepted_words' : {},
@@ -26,7 +26,7 @@ var internals = {
  * Worker for analyzing the words in the titles 
  */
 module.exports = function(models, done) {
-    return models.model['item'].find({enabled : true, _sort : { $gte : new Date() - 3600 * 60 * 1000}}, function(err, items) {
+    return models.model['item'].find({enabled : true, _sort : { $gte : new Date() - 3600 * 24 * 1000}}, function(err, items) {
         if (!items || !items.length) {
             return done(null, internals.count);
         }
@@ -85,7 +85,7 @@ module.exports = function(models, done) {
 
                 if (!doc) {
                     internals.count.added++;
-                    // L('Creating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
+                    L('Creating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
                     var newFragment = new models.model['title-fragment']({
                         'string' : word,
                         'count' : 1,
@@ -101,12 +101,14 @@ module.exports = function(models, done) {
                     
                 internals.count.updated++;
                  
-                // L('Updating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
+                L('Updating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
 
+                //normalize this
+                //add a count of source?
                 doc.count++;
                 doc.total += internals.accepted_words[word];
                 doc.median = doc.total / doc.count;
-                doc.score  = internals.accepted_words[word] - doc.median;
+                doc.score  = (internals.accepted_words[word] - doc.median) / internals.accepted_words[word];
 
                 return doc.save(function(err, newDoc) {
                     return addFragmentToItems(newDoc, word, next);
@@ -126,16 +128,16 @@ module.exports = function(models, done) {
  *  Add the word to 
  */
 var addFragmentToItems = function(doc, word, done) {
-    if (internals.accepted_words[word] * word.length < internals.score_threshold) {
-        return done();
-    }
+    // if (internals.accepted_words[word] * word.length < internals.score_threshold) {
+        // return done();
+    // }
 
     return Async.eachLimit(Object.keys(internals.word_origin_hash[word]), 3, function(id, next) {
         var item = internals.word_origin_hash[word][id];
 
         if (item.fragments.indexOf(word) < 0) {
             internals.count.pushed++;
-            // L('Adding fragment ' + word + ' to ' + item.title);
+            L('Adding fragment ' + word + ' to ' + item.title);
             item.fragments.push(word);
         }
 

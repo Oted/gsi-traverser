@@ -30,18 +30,18 @@ models.connect(function() {
  */
 internals.process = function(done) {
     return Async.series({
-        'twitch' : function(next) {
-            return require('./workers/twitch.js')(EXPIRE_TIME, models.model['item'], next);
-        },
-        '404' : function(next) {
-            return require('./workers/404.js')(EXPIRE_TIME, models.model['item'], next);
-        },
-        'youtube' : function(next) {
-            return require('./workers/youtube.js')(EXPIRE_TIME, models.model['item'], next);
-        },
-        'expire' : function(next) {
-            return require('./workers/remover.js')(EXPIRE_TIME, models.model['item'], next);
-        },
+        // 'twitch' : function(next) {
+            // return require('./workers/twitch.js')(EXPIRE_TIME, models.model['item'], next);
+        // },
+        // '404' : function(next) {
+            // return require('./workers/404.js')(EXPIRE_TIME, models.model['item'], next);
+        // },
+        // 'youtube' : function(next) {
+            // return require('./workers/youtube.js')(EXPIRE_TIME, models.model['item'], next);
+        // },
+        // 'expire' : function(next) {
+            // return require('./workers/remover.js')(EXPIRE_TIME, models.model['item'], next);
+        // },
         'word-analyzer' : function(next) {
             return require('./workers/word-analyzer.js')(models, next);
         }
