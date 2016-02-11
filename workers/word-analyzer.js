@@ -7,8 +7,7 @@ var Natural     = require('natural');
 var tokenizer   = new Natural.WordTokenizer();
 
 var internals = {
-    'score_threshold' : 50,
-    'accepted_threshold' : 10,
+    'accepted_threshold' : 8,
     'word_origin_hash' : {},
     'all_words_occurrences' : {},
     'accepted_words' : {},
@@ -128,10 +127,6 @@ module.exports = function(models, done) {
  *  Add the word to 
  */
 var addFragmentToItems = function(doc, word, done) {
-    // if (internals.accepted_words[word] * word.length < internals.score_threshold) {
-        // return done();
-    // }
-
     return Async.eachLimit(Object.keys(internals.word_origin_hash[word]), 3, function(id, next) {
         var item = internals.word_origin_hash[word][id];
 
