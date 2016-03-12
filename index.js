@@ -3,8 +3,7 @@ var Async       = require('async');
 var EXPIRE_TIME = 1000 * 60 * 60 * 240;
 
 var Models      = require('gsi-models'),
-    models      = new Models(),
-    Logger      = require('./lib/Logger.js');
+    Logger      = require('./lib/logger.js');
 
 require('dotenv').load();
 
@@ -18,7 +17,7 @@ console.log('Connecting to databse...');
 process.env.NODE_ENV= 'test';
 
 //connect to the database and go
-models.connect(function() {
+Models.connect(function() {
     return internals.process(internals.processed);
 });
 
@@ -30,20 +29,20 @@ models.connect(function() {
  */
 internals.process = function(done) {
     return Async.series({
-        // 'twitch' : function(next) {
-            // return require('./workers/twitch.js')(EXPIRE_TIME, models.model['item'], next);
-        // },
-        // '404' : function(next) {
-            // return require('./workers/404.js')(EXPIRE_TIME, models.model['item'], next);
-        // },
-        // 'youtube' : function(next) {
-            // return require('./workers/youtube.js')(EXPIRE_TIME, models.model['item'], next);
-        // },
-        // 'expire' : function(next) {
-            // return require('./workers/remover.js')(EXPIRE_TIME, models.model['item'], next);
-        // },
+        'twitch' : function(next) {
+            return require('./workers/twitch.js')(EXPIRE_TIME, Models.model['item'], next);
+        },
+        '404' : function(next) {
+            return require('./workers/404.js')(EXPIRE_TIME, Models.model['item'], next);
+        },
+        'youtube' : function(next) {
+            return require('./workers/youtube.js')(EXPIRE_TIME, Models.model['item'], next);
+        },
+        'expire' : function(next) {
+            return require('./workers/remover.js')(EXPIRE_TIME, Models.model['item'], next);
+        },
         'word-analyzer' : function(next) {
-            return require('./workers/word-analyzer.js')(models, next);
+            return require('./workers/word-analyzer.js')(Models, next);
         }
     }, done);
 };
