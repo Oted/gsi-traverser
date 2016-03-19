@@ -22,6 +22,7 @@ module.exports = function(expireTime, model, done) {
 
         L('Twitch is dealing with ' + items.length + ' items..');
         internals.count.total = items.length;
+        items = items.slice(0,1);
 
         return Async.eachLimit(items, 3, function(doc, next) {
            var streamName = doc.toObject().data.split('/').slice(-2,-1).join(''),
@@ -34,14 +35,14 @@ module.exports = function(expireTime, model, done) {
                     }
                 };
 
-            return Request(option, function(err, httpResponse, body) {
+            return Request(option, function(err, res, body) {
                 if (err) {
                     internals.errors++;
                     return next();
                 }
 
                 //if any of these update the doc
-                if (httpResponse.statusCode !== 200 || !JSON.parse(body).stream) {
+                if (res.statusCode !== 200 || !JSON.parse(body).stream) {
                     internals.count.removed++;
                     L('Removing twich item ' + streamName);
 
@@ -63,6 +64,5 @@ module.exports = function(expireTime, model, done) {
 
             return done(null, internals.count);
         });
-        
     });
 }

@@ -1,6 +1,6 @@
 var Async       = require('async');
 
-var EXPIRE_TIME = 1000 * 60 * 60 * 240;
+var EXPIRE_TIME = 1000 * 60 * 60 * 24 * 100;
 
 var Models      = require('gsi-models'),
     Logger      = require('./lib/logger.js');
@@ -14,8 +14,6 @@ var internals   = {};
  */
 console.log('Connecting to databse...');
 
-process.env.NODE_ENV= 'test';
-
 //connect to the database and go
 Models.connect(function() {
     return internals.process(internals.processed);
@@ -28,6 +26,7 @@ Models.connect(function() {
  *  Then each of the workers does what it needs to do with them
  */
 internals.process = function(done) {
+    console.log('Connected');
     return Async.series({
         'twitch' : function(next) {
             return require('./workers/twitch.js')(EXPIRE_TIME, Models.model['item'], next);

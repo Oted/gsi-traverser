@@ -3,11 +3,12 @@ var Request     = require('request');
 var L           = require('../lib/logger.js');
 var _           = require('lodash');
 var forbidden   = require('../data/forbidden_words.json');
+var forced      = require('../data/forced_words.json');
 var Natural     = require('natural');
 var tokenizer   = new Natural.WordTokenizer();
 
 var internals = {
-    'accepted_threshold' : 8,
+    'accepted_threshold' : 5,
     'word_origin_hash' : {},
     'all_words_occurrences' : {},
     'accepted_words' : {},
@@ -22,10 +23,10 @@ var internals = {
 };
 
 /**
- * Worker for analyzing the words in the titles 
+ * Worker for analyzing the words in the titles
  */
 module.exports = function(models, done) {
-    return models.model['item'].find({enabled : true, _sort : { $gte : new Date() - 3600 * 24 * 1000}}, function(err, items) {
+    return models.model['item'].find({enabled : true, _sort : { $gte : new Date() - 3600 * 24 * 1000 * 2}}, function(err, items) {
         if (!items || !items.length) {
             return done(null, internals.count);
         }
@@ -34,20 +35,16 @@ module.exports = function(models, done) {
 
         items.forEach(function(item) {
             var title = item.toObject().title.trim().toLowerCase();
-            
+
             var words = tokenizer.tokenize(title).filter(function(word) {
                 return word.length >= 3;
-            });
-
-            var bigrams = Natural.NGrams.bigrams(words.join(' ')).forEach(function(biword) {
-                words.push(biword.join(' '));
             });
 
             words.forEach(function(word) {
                 if (forbidden[word]) {
                     return;
                 }
-                
+
                 if (!internals.word_origin_hash[word]) {
                     internals.word_origin_hash[word] = {};
                 }
@@ -56,10 +53,10 @@ module.exports = function(models, done) {
 
                 if (internals.all_words_occurrences[word]) {
                     internals.all_words_occurrences[word]++;
-                    
-                    if (internals.all_words_occurrences[word] >= internals.accepted_threshold) {
+
+                    if ((internals.all_words_occurrences[word] >= internals.accepted_threshold) || forced[word]) {
                         internals.accepted_words[word] = internals.all_words_occurrences[word];
-                        
+
                         if (internals.all_words_occurrences[word] > internals.max_occurrance) {
                             internals.max_occurrance = internals.all_words_occurrences[word];
                         }
@@ -69,7 +66,7 @@ module.exports = function(models, done) {
                 }
             });
         });
-        
+
         return Async.eachLimit(Object.keys(internals.accepted_words), 3, function(word, next) {
             if (forbidden[word]) {
                 return next();
@@ -79,7 +76,7 @@ module.exports = function(models, done) {
                 if (err) {
                     return next(err);
                 }
-                
+
                 internals.count.total++;
 
                 if (!doc) {
@@ -97,9 +94,9 @@ module.exports = function(models, done) {
                         return addFragmentToItems(newDoc, word, next);
                     });
                 }
-                    
+
                 internals.count.updated++;
-                 
+
                 L('Updating fragment ' + word + ' with score ' + internals.accepted_words[word] * word.length);
 
                 //normalize this
@@ -124,7 +121,7 @@ module.exports = function(models, done) {
 };
 
 /**
- *  Add the word to 
+ *  Add the word to
  */
 var addFragmentToItems = function(doc, word, done) {
     return Async.eachLimit(Object.keys(internals.word_origin_hash[word]), 3, function(id, next) {

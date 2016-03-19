@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/Oted/gsi-traverser",
   "dependencies": {
-    "async": "^1.5.2",
+    "async": "^2.0.0-rc.1",
     "dotenv": "^2.0.0",
     "gsi-models": "git@github.com:Oted/gsi-models.git",
     "lodash": "^4.2.0",
