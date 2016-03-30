@@ -22,7 +22,6 @@ module.exports = function(expireTime, model, done) {
 
         L('Twitch is dealing with ' + items.length + ' items..');
         internals.count.total = items.length;
-        items = items.slice(0,1);
 
         return Async.eachLimit(items, 3, function(doc, next) {
            var streamName = doc.toObject().data.split('/').slice(-2,-1).join(''),
