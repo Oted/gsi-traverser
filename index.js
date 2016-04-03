@@ -31,18 +31,18 @@ internals.process = function(done) {
         'twitch' : function(next) {
             return require('./workers/twitch.js')(EXPIRE_TIME, Models.model['item'], next);
         },
-        '404' : function(next) {
-            return require('./workers/404.js')(EXPIRE_TIME, Models.model['item'], next);
-        },
-        'youtube' : function(next) {
-            return require('./workers/youtube.js')(EXPIRE_TIME, Models.model['item'], next);
-        },
-        'expire' : function(next) {
-            return require('./workers/remover.js')(EXPIRE_TIME, Models.model['item'], next);
-        },
-        'word-analyzer' : function(next) {
-            return require('./workers/word-analyzer.js')(Models, next);
-        }
+        // '404' : function(next) {
+            // return require('./workers/404.js')(EXPIRE_TIME, Models.model['item'], next);
+        // },
+        // 'youtube' : function(next) {
+            // return require('./workers/youtube.js')(EXPIRE_TIME, Models.model['item'], next);
+        // },
+        // 'expire' : function(next) {
+            // return require('./workers/remover.js')(EXPIRE_TIME, Models.model['item'], next);
+        // },
+        // 'word-analyzer' : function(next) {
+            // return require('./workers/word-analyzer.js')(Models, next);
+        // }
     }, done);
 };
 

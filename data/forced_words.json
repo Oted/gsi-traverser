@@ -1,4 +1,12 @@
 {
     "edm" : true,
+    "chill" : true,
+    "jazz" : true,
+    "ambient" : true,
+    "indie" : true,
+    "electronic" : true,
+    "electro" : true,
+    "drama" : true,
+    "rock" : true,
     "pewdiepie" : true
 }
